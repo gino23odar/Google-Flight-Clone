@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pagination, Box, Select, MenuItem, FormControl, InputLabel, useTheme } from '@mui/material';
+import { Pagination, Box, Select, MenuItem, FormControl, InputLabel, useTheme, CircularProgress, SelectChangeEvent } from '@mui/material';
 
 interface Carrier {
     id: string;
@@ -33,9 +33,11 @@ interface Leg {
     id: string;
     origin: {
         name: string;
+        id?: string;
     };
     destination: {
         name: string;
+        id?: string;
     };
     durationInMinutes: number;
     stopCount: number;
@@ -54,6 +56,8 @@ interface Flight {
         formatted: string;
     };
     legs: Leg[];
+    itineraryId: string;
+    sessionId: string;
 }
 
 interface FlightTableProps {
@@ -61,27 +65,47 @@ interface FlightTableProps {
     isRoundTrip?: boolean;
     onSelectOutbound?: (flight: Flight) => void;
     isReturnSelection?: boolean;
+    sessionId: string;
+    passengerCounts: {
+        adults: number;
+        children: number;
+        infants: number;
+    };
+}
+
+interface BookingAgent {
+    name: string;
+    url: string;
+    price: number;
+}
+
+interface BookingDetails {
+    [key: string]: BookingAgent[] | null;
 }
 
 export default function FlightTable({
     flights,
     isRoundTrip = false,
     onSelectOutbound,
-    isReturnSelection = false
+    isReturnSelection = false,
+    sessionId,
+    passengerCounts
 }: FlightTableProps) {
     const theme = useTheme();
     const [expandedFlightId, setExpandedFlightId] = useState<string | null>(null);
     const [page, setPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(5);
+    const [bookingDetails, setBookingDetails] = useState<BookingDetails>({});
+    const [loadingBooking, setLoadingBooking] = useState<string | null>(null);
 
     const handlePageChange = (_: React.ChangeEvent<unknown>, value: number) => {
         setPage(value);
         setExpandedFlightId(null);
     };
 
-    const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const handleRowsPerPageChange = (event: SelectChangeEvent<number>) => {
         setItemsPerPage(Number(event.target.value));
-        setPage(1); // Reset to first page when changing items per page
+        setPage(1);
         setExpandedFlightId(null);
     };
 
@@ -107,6 +131,63 @@ export default function FlightTable({
             minute: '2-digit',
             hour12: true
         });
+    };
+
+    const fetchBookingDetails = async (flight: Flight) => {
+        if (bookingDetails[flight.id]) return;
+
+        let itinId = flight.id.split('|')[0];
+
+        // console.log('legs: ', flight.legs);
+
+        // Format legs data
+        const legs = flight.legs.map(leg => ({
+            origin: leg.origin.id,
+            destination: leg.destination.id,
+            date: new Date(leg.departure).toISOString().split('T')[0]
+        }));
+
+        setLoadingBooking(flight.id);
+        try {
+            const response = await fetch('/api/flight-details', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    itineraryId: itinId,
+                    legs: legs,
+                    sessionId: sessionId,
+                    adults: passengerCounts.adults,
+                    children: passengerCounts.children,
+                    infants: passengerCounts.infants
+                }),
+            });
+
+            // console.log('itinId: ', itinId);
+            // console.log('session: ', sessionId);
+
+            if (!response.ok) throw new Error('Failed to fetch booking details');
+
+            const data = await response.json();
+            console.log('Booking details response:', data);
+
+            const agents = data.data?.itinerary?.pricingOptions?.[0]?.agents || [];
+            console.log('Extracted agents:', agents);
+
+            setBookingDetails(prev => ({
+                ...prev,
+                [flight.id]: agents.map((agent: any) => ({
+                    name: agent.name,
+                    url: agent.url,
+                    price: agent.price,
+                })),
+            }));
+        } catch (error) {
+            console.error('Error fetching booking details:', error);
+        } finally {
+            setLoadingBooking(null);
+        }
     };
 
     return (
@@ -185,6 +266,8 @@ export default function FlightTable({
                     {displayedFlights.map((flight) => {
                         const isExpanded = expandedFlightId === flight.id;
                         const leg = flight.legs[0];
+
+                        // console.log('Flight data:', flight);
 
                         return (
                             <React.Fragment key={flight.id}>
@@ -346,6 +429,64 @@ export default function FlightTable({
                                                                     ))}
                                                                 </ul>
                                                             </div>
+                                                        </div>
+
+                                                        <div className="mt-4">
+                                                            <div className="font-medium mb-2">Booking Options:</div>
+                                                            {loadingBooking === flight.id ? (
+                                                                <div className="flex justify-center">
+                                                                    <CircularProgress size={24} />
+                                                                </div>
+                                                            ) : bookingDetails[flight.id] ? (
+                                                                <div className="space-y-2">
+                                                                    {bookingDetails[flight.id]?.map((agent, index) => (
+                                                                        <a
+                                                                            key={index}
+                                                                            href={agent.url}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="inline-block"
+                                                                        >
+                                                                            <Box
+                                                                                component="button"
+                                                                                sx={{
+                                                                                    bgcolor: theme.palette.success.main,
+                                                                                    color: theme.palette.success.contrastText,
+                                                                                    px: 2,
+                                                                                    py: 1,
+                                                                                    borderRadius: 1,
+                                                                                    border: 'none',
+                                                                                    cursor: 'pointer',
+                                                                                    '&:hover': {
+                                                                                        bgcolor: theme.palette.success.dark,
+                                                                                    },
+                                                                                }}
+                                                                            >
+                                                                                Book with {agent.name} (${agent.price})
+                                                                            </Box>
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <Box
+                                                                    component="button"
+                                                                    onClick={() => fetchBookingDetails(flight)}
+                                                                    sx={{
+                                                                        bgcolor: theme.palette.info.main,
+                                                                        color: theme.palette.info.contrastText,
+                                                                        px: 2,
+                                                                        py: 1,
+                                                                        borderRadius: 1,
+                                                                        border: 'none',
+                                                                        cursor: 'pointer',
+                                                                        '&:hover': {
+                                                                            bgcolor: theme.palette.info.dark,
+                                                                        },
+                                                                    }}
+                                                                >
+                                                                    Show Booking Options
+                                                                </Box>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 ))}
