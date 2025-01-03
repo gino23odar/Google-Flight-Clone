@@ -65,8 +65,14 @@ const Hero = () => {
         }
     };
 
+    // Preload the component
+    const preloadFlightTable = () => {
+        const promise = import('./FlightTable/FlightTable');
+        return promise;
+    };
+
     return (
-        <Box component="section" sx={{ pb: 1, border: '1px dashed grey', width: '100%', maxWidth: '1200px', mx: 'auto' }}>
+        <Box component="section" sx={{ pb: 1, width: '100%', maxWidth: '1200px', mx: 'auto' }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4, width: '100%' }}>
                 <Box sx={{ 
                     width: '100%',
@@ -90,7 +96,10 @@ const Hero = () => {
             </Box>
             <SearchBar 
                 onSearchResults={handleSearchResults} 
-                onTripTypeChange={(isRound) => setIsRoundTrip(isRound)}
+                onTripTypeChange={(isRound) => {
+                    setIsRoundTrip(isRound);
+                    preloadFlightTable();
+                }}
                 setSessionId={setSessionId}
                 setIsLoading={setIsLoading}
                 onPassengerCountsChange={setPassengerCounts}

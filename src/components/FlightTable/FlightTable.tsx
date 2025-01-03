@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { Pagination, Box, Select, MenuItem, FormControl, InputLabel, useTheme, CircularProgress, SelectChangeEvent } from '@mui/material';
+import { Box, useTheme, SelectChangeEvent } from '@mui/material';
+import { TableHeader } from './components/TableHeader';
+import { FlightRow } from './components/FlightRow';
+import { ExpandedFlightDetails } from './components/ExpandedFlightDetails';
+import { TablePagination } from './components/TablePagination';
 
 interface Carrier {
     id: string;
@@ -204,6 +208,7 @@ export default function FlightTable({
                     <h2 className="text-lg font-semibold">Select your return flight</h2>
                 </Box>
             )}
+
             <Box
                 component="table"
                 sx={{
@@ -212,327 +217,43 @@ export default function FlightTable({
                     border: `1px solid ${theme.palette.divider}`,
                 }}
             >
-                <thead>
-                    <tr>
-                        <Box
-                            component="th"
-                            sx={{
-                                bgcolor: theme.palette.action.hover,
-                                border: `1px solid ${theme.palette.divider}`,
-                                px: 2,
-                                py: 1,
-                            }}
-                        >
-                            Flight Details
-                        </Box>
-                        <Box
-                            component="th"
-                            sx={{
-                                bgcolor: theme.palette.action.hover,
-                                border: `1px solid ${theme.palette.divider}`,
-                                px: 2,
-                                py: 1,
-                            }}
-                        >
-                            Stops
-                        </Box>
-                        <Box
-                            component="th"
-                            sx={{
-                                bgcolor: theme.palette.action.hover,
-                                border: `1px solid ${theme.palette.divider}`,
-                                px: 2,
-                                py: 1,
-                            }}
-                        >
-                            Price
-                        </Box>
-                        {isRoundTrip && (
-                            <Box
-                                component="th"
-                                sx={{
-                                    bgcolor: theme.palette.action.hover,
-                                    border: `1px solid ${theme.palette.divider}`,
-                                    px: 2,
-                                    py: 1,
-                                }}
-                            >
-                                Action
-                            </Box>
-                        )}
-                    </tr>
-                </thead>
+                <TableHeader isRoundTrip={isRoundTrip} theme={theme} />
                 <tbody>
-                    {displayedFlights.map((flight) => {
-                        const isExpanded = expandedFlightId === flight.id;
-                        const leg = flight.legs[0];
-
-                        // console.log('Flight data:', flight);
-
-                        return (
-                            <React.Fragment key={flight.id}>
-                                <Box
-                                    component="tr"
-                                    sx={{
-                                        cursor: 'pointer',
-                                        bgcolor: isExpanded ? theme.palette.action.selected : 'inherit',
-                                        '&:hover': {
-                                            bgcolor: theme.palette.action.hover,
-                                        },
-                                    }}
-                                    onClick={() => toggleExpanded(flight.id)}
-                                >
-                                    <Box
-                                        component="td"
-                                        sx={{
-                                            border: `1px solid ${theme.palette.divider}`,
-                                            px: 2,
-                                            py: 1,
-                                        }}
-                                    >
-                                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                                                <span>{formatDateTime(leg.departure)}</span>
-                                                <span>→</span>
-                                                <span>{formatDateTime(leg.arrival)}</span>
-                                            </Box>
-                                            <Box sx={{
-                                                typography: 'body2',
-                                                color: theme.palette.text.secondary,
-                                            }}>
-                                                {leg.carriers.marketing.map((carrier, index) => (
-                                                    <span key={carrier.id}>
-                                                        {carrier.name}
-                                                        {index < leg.carriers.marketing.length - 1 ? ', ' : ''}
-                                                    </span>
-                                                ))}
-                                            </Box>
-                                        </Box>
-                                    </Box>
-                                    <Box
-                                        component="td"
-                                        sx={{
-                                            border: `1px solid ${theme.palette.divider}`,
-                                            px: 2,
-                                            py: 1,
-                                        }}
-                                    >
-                                        {leg.stopCount} stop(s)
-                                    </Box>
-                                    <Box
-                                        component="td"
-                                        sx={{
-                                            border: `1px solid ${theme.palette.divider}`,
-                                            px: 2,
-                                            py: 1,
-                                        }}
-                                    >
-                                        {flight.price.formatted}
-                                    </Box>
-                                    {isRoundTrip && (
-                                        <Box
-                                            component="td"
-                                            sx={{
-                                                border: `1px solid ${theme.palette.divider}`,
-                                                px: 2,
-                                                py: 1,
-                                            }}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onSelectOutbound?.(flight);
-                                            }}
-                                        >
-                                            <Box
-                                                component="button"
-                                                sx={{
-                                                    bgcolor: theme.palette.primary.main,
-                                                    color: theme.palette.primary.contrastText,
-                                                    px: 2,
-                                                    py: 1,
-                                                    borderRadius: 1,
-                                                    border: 'none',
-                                                    cursor: 'pointer',
-                                                    '&:hover': {
-                                                        bgcolor: theme.palette.primary.dark,
-                                                    },
-                                                }}
-                                            >
-                                                Select Flight
-                                            </Box>
-                                        </Box>
-                                    )}
-                                </Box>
-
-                                {isExpanded && (
-                                    <Box
-                                        component="tr"
-                                        sx={{
-                                            bgcolor: theme.palette.action.hover,
-                                        }}
-                                    >
-                                        <Box
-                                            component="td"
-                                            colSpan={isRoundTrip ? 4 : 3}
-                                            sx={{
-                                                border: `1px solid ${theme.palette.divider}`,
-                                                px: 2,
-                                                py: 1,
-                                            }}
-                                        >
-                                            <div>
-                                                {flight.legs.map((leg, index) => (
-                                                    <div
-                                                        key={index}
-                                                        className="mb-4 last:mb-0 border-b last:border-0 pb-4 last:pb-0"
-                                                    >
-                                                        <div className="mb-4">
-                                                            <strong>
-                                                                {leg.origin.name} → {leg.destination.name}
-                                                            </strong>
-                                                        </div>
-
-                                                        {/* Segments Information */}
-                                                        <div className="pl-4 space-y-4">
-                                                            {leg.segments.map((segment, segIndex) => (
-                                                                <div key={segment.id} className="border-l-2 border-gray-300 pl-4">
-                                                                    <div className="font-medium">
-                                                                        Segment {segIndex + 1}: {segment.origin.parent.name}, {segment.origin.parent.country} → {' '}
-                                                                        {segment.destination.parent.name}, {segment.destination.parent.country}
-                                                                    </div>
-                                                                    <div>Flight: {segment.flightNumber}</div>
-                                                                    <div>Departure: {new Date(segment.departure).toLocaleString()}</div>
-                                                                    <div>Arrival: {new Date(segment.arrival).toLocaleString()}</div>
-                                                                    <div>Duration: {formatDuration(segment.durationInMinutes)}</div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-
-                                                        <div className="mt-4">
-                                                            <div>Total Duration: {formatDuration(leg.durationInMinutes)}</div>
-                                                            <div>
-                                                                Carrier(s):
-                                                                <ul className="mt-2 space-y-2">
-                                                                    {leg.carriers.marketing.map((carrier) => (
-                                                                        <li
-                                                                            key={carrier.id}
-                                                                            className="flex items-center space-x-2"
-                                                                        >
-                                                                            {carrier.logoUrl && (
-                                                                                <img
-                                                                                    src={carrier.logoUrl}
-                                                                                    alt={carrier.name}
-                                                                                    className="w-6 h-6"
-                                                                                />
-                                                                            )}
-                                                                            <span>{carrier.name}</span>
-                                                                        </li>
-                                                                    ))}
-                                                                </ul>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="mt-4">
-                                                            <div className="font-medium mb-2">Booking Options:</div>
-                                                            {loadingBooking === flight.id ? (
-                                                                <div className="flex justify-center">
-                                                                    <CircularProgress size={24} />
-                                                                </div>
-                                                            ) : bookingDetails[flight.id] ? (
-                                                                <div className="space-y-2">
-                                                                    {bookingDetails[flight.id]?.map((agent, index) => (
-                                                                        <a
-                                                                            key={index}
-                                                                            href={agent.url}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            className="inline-block"
-                                                                        >
-                                                                            <Box
-                                                                                component="button"
-                                                                                sx={{
-                                                                                    bgcolor: theme.palette.success.main,
-                                                                                    color: theme.palette.success.contrastText,
-                                                                                    px: 2,
-                                                                                    py: 1,
-                                                                                    borderRadius: 1,
-                                                                                    border: 'none',
-                                                                                    cursor: 'pointer',
-                                                                                    '&:hover': {
-                                                                                        bgcolor: theme.palette.success.dark,
-                                                                                    },
-                                                                                }}
-                                                                            >
-                                                                                Book with {agent.name} (${agent.price})
-                                                                            </Box>
-                                                                        </a>
-                                                                    ))}
-                                                                </div>
-                                                            ) : (
-                                                                <Box
-                                                                    component="button"
-                                                                    onClick={() => fetchBookingDetails(flight)}
-                                                                    sx={{
-                                                                        bgcolor: theme.palette.info.main,
-                                                                        color: theme.palette.info.contrastText,
-                                                                        px: 2,
-                                                                        py: 1,
-                                                                        borderRadius: 1,
-                                                                        border: 'none',
-                                                                        cursor: 'pointer',
-                                                                        '&:hover': {
-                                                                            bgcolor: theme.palette.info.dark,
-                                                                        },
-                                                                    }}
-                                                                >
-                                                                    Show Booking Options
-                                                                </Box>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </Box>
-                                    </Box>
-                                )}
-                            </React.Fragment>
-                        );
-                    })}
+                    {displayedFlights.map((flight) => (
+                        <React.Fragment key={flight.id}>
+                            <FlightRow
+                                flight={flight}
+                                isExpanded={expandedFlightId === flight.id}
+                                isRoundTrip={isRoundTrip}
+                                theme={theme}
+                                onToggleExpand={toggleExpanded}
+                                onSelectOutbound={onSelectOutbound}
+                                formatDateTime={formatDateTime}
+                            />
+                            {expandedFlightId === flight.id && (
+                                <ExpandedFlightDetails
+                                    flight={flight}
+                                    isRoundTrip={isRoundTrip}
+                                    theme={theme}
+                                    bookingDetails={bookingDetails}
+                                    loadingBooking={loadingBooking}
+                                    onFetchBookingDetails={fetchBookingDetails}
+                                    formatDuration={formatDuration}
+                                />
+                            )}
+                        </React.Fragment>
+                    ))}
                 </tbody>
             </Box>
 
             {totalPages > 1 && (
-                <Box sx={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    gap: 3,
-                    p: 2.5
-                }}>
-                    <FormControl size="small">
-                        <InputLabel id="rows-per-page-label">Rows</InputLabel>
-                        <Select
-                            labelId="rows-per-page-label"
-                            value={itemsPerPage}
-                            label="Rows"
-                            onChange={handleRowsPerPageChange}
-                            sx={{ minWidth: 80 }}
-                        >
-                            <MenuItem value={5}>5</MenuItem>
-                            <MenuItem value={10}>10</MenuItem>
-                            <MenuItem value={15}>15</MenuItem>
-                            <MenuItem value={25}>25</MenuItem>
-                        </Select>
-                    </FormControl>
-                    <Pagination
-                        count={totalPages}
-                        page={page}
-                        onChange={handlePageChange}
-                        color="primary"
-                        size="large"
-                        showFirstButton
-                        showLastButton
-                    />
-                </Box>
+                <TablePagination
+                    itemsPerPage={itemsPerPage}
+                    totalPages={totalPages}
+                    page={page}
+                    onPageChange={handlePageChange}
+                    onRowsPerPageChange={handleRowsPerPageChange}
+                />
             )}
         </div>
     );

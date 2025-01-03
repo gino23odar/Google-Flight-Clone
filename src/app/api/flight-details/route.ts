@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-interface Leg {
-    origin: string;
-    destination: string;
-    date: string;
-}
-
 export async function POST(request: NextRequest) {
     const API_KEY = process.env.RAPIDAPI_KEY!;
     const { itineraryId, legs, sessionId, adults = 1, children = 0, infants = 0 } = await request.json();
