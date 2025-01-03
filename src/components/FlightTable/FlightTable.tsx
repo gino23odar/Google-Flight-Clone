@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Box, useTheme, SelectChangeEvent } from '@mui/material';
 import { TableHeader } from './components/TableHeader';
 import { FlightRow } from './components/FlightRow';
 import { ExpandedFlightDetails } from './components/ExpandedFlightDetails';
 import { TablePagination } from './components/TablePagination';
+import { SortField } from './components/TableHeader';
 
 interface Carrier {
     id: string;
@@ -101,6 +102,8 @@ export default function FlightTable({
     const [itemsPerPage, setItemsPerPage] = useState(5);
     const [bookingDetails, setBookingDetails] = useState<BookingDetails>({});
     const [loadingBooking, setLoadingBooking] = useState<string | null>(null);
+    const [sortField, setSortField] = useState<SortField | null>(null);
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
     const handlePageChange = (_: React.ChangeEvent<unknown>, value: number) => {
         setPage(value);
@@ -113,9 +116,33 @@ export default function FlightTable({
         setExpandedFlightId(null);
     };
 
+    const handleSort = (field: SortField, direction: 'asc' | 'desc') => {
+        setSortField(field);
+        setSortDirection(direction);
+    };
+
+    const sortedFlights = useMemo(() => {
+        if (!sortField) return flights;
+
+        return [...flights].sort((a, b) => {
+            const multiplier = sortDirection === 'asc' ? 1 : -1;
+
+            switch (sortField) {
+                case 'price':
+                    return (a.price.raw - b.price.raw) * multiplier;
+                case 'stops':
+                    return (a.legs[0].stopCount - b.legs[0].stopCount) * multiplier;
+                case 'duration':
+                    return (a.legs[0].durationInMinutes - b.legs[0].durationInMinutes) * multiplier;
+                default:
+                    return 0;
+            }
+        });
+    }, [flights, sortField, sortDirection]);
+
     const startIndex = (page - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    const displayedFlights = flights.slice(startIndex, endIndex);
+    const displayedFlights = sortedFlights.slice(startIndex, endIndex);
     const totalPages = Math.ceil(flights.length / itemsPerPage);
 
     const toggleExpanded = (flightId: string) => {
@@ -202,7 +229,7 @@ export default function FlightTable({
                         mb: 4,
                         p: 4,
                         bgcolor: theme.palette.primary.light,
-                        borderRadius: 1,
+                        borderRadius: 2,
                     }}
                 >
                     <h2 className="text-lg font-semibold">Select your return flight</h2>
@@ -215,9 +242,16 @@ export default function FlightTable({
                     width: '100%',
                     borderCollapse: 'collapse',
                     border: `1px solid ${theme.palette.divider}`,
+                    borderRadius: '8px'
                 }}
             >
-                <TableHeader isRoundTrip={isRoundTrip} theme={theme} />
+                <TableHeader 
+                    isRoundTrip={isRoundTrip} 
+                    theme={theme} 
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                />
                 <tbody>
                     {displayedFlights.map((flight) => (
                         <React.Fragment key={flight.id}>
