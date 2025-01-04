@@ -36,9 +36,12 @@ type CabinClass = 'economy' | 'premium_economy' | 'business' | 'first';
 interface SearchBarProps {
     onSearchResults: (results: any) => void;
     onTripTypeChange: (isRoundTrip: boolean) => void;
+    setSessionId: (id: string) => void;
+    setIsLoading: (loading: boolean) => void;
+    onPassengerCountsChange: (counts: PassengerCounts) => void;
 }
 
-const SearchBar = ({ onSearchResults, onTripTypeChange }: SearchBarProps) => {
+const SearchBar = ({ onSearchResults, onTripTypeChange, setSessionId, setIsLoading, onPassengerCountsChange }: SearchBarProps) => {
     const [tripType, setTripType] = useState<string>('Round trip');
     const [departureDate, setDepartureDate] = useState<Dayjs | null>(dayjs());
     const [returnDate, setReturnDate] = useState<Dayjs | null>(dayjs().add(1, 'day'));
@@ -77,7 +80,11 @@ const SearchBar = ({ onSearchResults, onTripTypeChange }: SearchBarProps) => {
             const response = await fetch(url, options);
             const result = await response.json();
 
+            setSessionId(result.sessionId);
+
+
             console.log("Result:", result);
+            console.log("Result:", result.sessionId);
 
             // Safeguard unexpected return from API
             if (!result.data || !Array.isArray(result.data)) {
@@ -85,7 +92,7 @@ const SearchBar = ({ onSearchResults, onTripTypeChange }: SearchBarProps) => {
                 return [];
             }
 
-            // console.log("Before Filtering:", result.data);
+            console.log("Before Filtering:", result.data);
 
             const filteredData = result.data.filter(
                 (item: any) =>
@@ -136,6 +143,8 @@ const SearchBar = ({ onSearchResults, onTripTypeChange }: SearchBarProps) => {
             return;
         }
 
+        setIsLoading(true);
+
         const searchParams = {
             originSkyId: selectedFrom.skyId,
             destinationSkyId: selectedTo.skyId,
@@ -166,10 +175,11 @@ const SearchBar = ({ onSearchResults, onTripTypeChange }: SearchBarProps) => {
             if (!response.ok) throw new Error('Failed to fetch flights');
 
             const data = await response.json();
-            onSearchResults(data); // callback with search results
+            onSearchResults(data);
         } catch (error) {
             console.error('Error searching flights:', error);
             alert('Failed to search flights. Please try again.');
+            setIsLoading(false);
         }
     };
 
@@ -183,10 +193,13 @@ const SearchBar = ({ onSearchResults, onTripTypeChange }: SearchBarProps) => {
             if (type === 'infants' && newCount > prev.adults) return prev;
             if ((prev.adults + prev.children + prev.infants) >= 9 && increment) return prev;
 
-            return {
+            const newCounts = {
                 ...prev,
                 [type]: newCount
             };
+            
+            onPassengerCountsChange(newCounts);
+            return newCounts;
         });
     };
 
@@ -226,6 +239,7 @@ const SearchBar = ({ onSearchResults, onTripTypeChange }: SearchBarProps) => {
                     onChange={(_, newValue) => setSelectedFrom(newValue)}
                     value={selectedFrom}
                     isOptionEqualToValue={(option, value) => option.skyId === value.skyId}
+                    sx={{ minWidth: 250 }}
                     renderInput={(params) => (
                         <TextField
                             {...params}
@@ -253,6 +267,7 @@ const SearchBar = ({ onSearchResults, onTripTypeChange }: SearchBarProps) => {
                     onChange={(_, newValue) => setSelectedTo(newValue)}
                     value={selectedTo}
                     isOptionEqualToValue={(option, value) => option.skyId === value.skyId}
+                    sx={{ minWidth: 250 }}
                     renderInput={(params) => (
                         <TextField
                             {...params}
